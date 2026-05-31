@@ -3,9 +3,9 @@ import "./globals.css";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "PhD Admission Assistant",
+  title: "Vyasa AI Assistant",
   description:
-    "Ask questions about university PhD admissions. Answers grounded in official documents.",
+    "Your guide to PhD admissions — clear answers from official admission documents.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

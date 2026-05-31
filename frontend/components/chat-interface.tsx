@@ -151,11 +151,15 @@ export function ChatInterface() {
         {messages.length === 0 ? (
           <div className="mx-auto max-w-2xl pt-16 text-center">
             <h1 className="text-3xl font-semibold tracking-tight">
-              PhD Admission Assistant
+              Vyasa AI Assistant
             </h1>
-            <p className="mt-2 text-muted-foreground">
-              Ask anything about eligibility, entrance, application process, fees, or
-              important dates. Answers are grounded in the official documents.
+            <p className="mt-1 text-sm uppercase tracking-[0.18em] text-primary/80">
+              Your guide to PhD admissions
+            </p>
+            <p className="mt-4 text-muted-foreground">
+              Ask anything about eligibility, entrance, application, fees, or
+              important dates — every answer is drawn straight from the official
+              admission documents.
             </p>
             <div className="mt-8 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {SUGGESTIONS.map((s) => (

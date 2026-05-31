@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     TOP_K: int = 8
     RERANK_TOP_K: int = 5
     EMBED_BATCH_SIZE: int = 32
+    # Minimum relevance score for the top retrieved chunk. Below this we treat the
+    # question as off-topic, skip the LLM call, and return a canned refusal with
+    # no source citations. Scores: Jina rerank ~[0,1]; (1 - cosine distance) ~[0,1].
+    RELEVANCE_THRESHOLD: float = 0.15
 
     CORS_ORIGINS: str = "http://localhost:3000"
 

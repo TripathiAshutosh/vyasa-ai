@@ -105,6 +105,19 @@ class RAGPipeline:
             (m["content"] for m in reversed(messages) if m.get("role") == "user"), ""
         )
         sources = await self.retrieve(last_user) if last_user else []
+
+        # If retrieval clearly missed (top score below threshold) the question is
+        # off-topic for our PDFs. Skip the LLM call, return a canned refusal, and
+        # drop the citations so the UI doesn't show misleading source chips.
+        top_score = sources[0].score if sources and sources[0].score is not None else None
+        if top_score is not None and top_score < settings.RELEVANCE_THRESHOLD:
+            async def _refuse() -> AsyncIterator[str]:
+                yield (
+                    "I don't have that in the provided documents. "
+                    "Please check the official notification or contact the admissions office."
+                )
+            return _refuse(), []
+
         context = _build_context(sources) if sources else "(no documents indexed)"
 
         chat_messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]

@@ -12,7 +12,6 @@ import {
   KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ProviderBadge } from "@/components/provider-badge";
 import {
   AdminTokenDialog,
   getStoredToken,
@@ -21,17 +20,14 @@ import {
 import {
   deleteDocument,
   fetchDocuments,
-  fetchHealth,
   refreshIndex,
   uploadDocument,
   type DocumentEntry,
-  type HealthInfo,
 } from "@/lib/api";
 import { cn, formatBytes } from "@/lib/utils";
 
 export function DocumentSidebar() {
   const [docs, setDocs] = React.useState<DocumentEntry[]>([]);
-  const [health, setHealth] = React.useState<HealthInfo | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState<string | null>(null);
   const [tokenDialog, setTokenDialog] = React.useState(false);
@@ -40,8 +36,7 @@ export function DocumentSidebar() {
 
   const refresh = React.useCallback(async () => {
     try {
-      const [h, d] = await Promise.all([fetchHealth(), fetchDocuments()]);
-      setHealth(h);
+      const d = await fetchDocuments();
       setDocs(d.files);
     } catch (e) {
       toast.error(`Backend unreachable: ${(e as Error).message}`);
@@ -132,8 +127,10 @@ export function DocumentSidebar() {
             <GraduationCap className="h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold truncate">PhD Admission Bot</div>
-            <ProviderBadge health={health} />
+            <div className="text-sm font-semibold truncate">Vyasa AI Assistant</div>
+            <div className="text-[11px] text-muted-foreground truncate">
+              Your guide to PhD admissions
+            </div>
           </div>
         </div>
       </div>

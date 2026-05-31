@@ -1,0 +1,13 @@
+{
+  "_comment": "Template. Copy to models.config.json (gitignored) and put your real key there. The first custom_models[] entry is used; set MODELS_CONFIG_SELECT to a model_display_name to pick a different one.",
+  "custom_models": [
+    {
+      "model_display_name": "GPT-OSS 120B [Groq]",
+      "model": "openai/gpt-oss-120b",
+      "base_url": "https://api.groq.com/openai/v1",
+      "api_key": "gsk_REPLACE_ME",
+      "provider": "generic-chat-completion-api",
+      "max_tokens": 65536
+    }
+  ]
+}

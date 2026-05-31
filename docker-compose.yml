@@ -1,0 +1,65 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: phd_backend
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      DATA_DIR: /app/data
+      CHROMA_DIR: /app/chroma_db
+      CORS_ORIGINS: "*"
+    volumes:
+      - ./data:/app/data
+      - chroma_data:/app/chroma_db
+      # Custom-models JSON (optional). run.sh ensures the file exists (stub if absent).
+      - ./backend/models.config.json:/app/models.config.json:ro
+    expose:
+      - "8000"
+    networks:
+      - web
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # The browser hits /api/* which Caddy routes to the backend.
+        NEXT_PUBLIC_API_URL: ""
+    container_name: phd_frontend
+    restart: unless-stopped
+    expose:
+      - "3000"
+    depends_on:
+      - backend
+    networks:
+      - web
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: phd_caddy
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      # Set to your domain in the .env file. Use ":80" for plain HTTP/dev.
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - web
+
+volumes:
+  chroma_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  web:
+    driver: bridge

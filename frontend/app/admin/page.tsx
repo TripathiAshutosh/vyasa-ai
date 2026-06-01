@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { ChatInterface } from "@/components/chat-interface";
-import { DocumentSidebar } from "@/components/document-sidebar";
+import { AdminDashboard } from "@/components/admin-dashboard";
+import { TopBar } from "@/components/top-bar";
 
 export const metadata: Metadata = {
   title: "Admin · Vyasa AI Assistant",
@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 
 export default function AdminPage() {
   return (
-    <div className="flex h-screen w-full overflow-hidden">
-      <DocumentSidebar />
-      <main className="flex-1 min-w-0">
-        <ChatInterface />
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-muted/20">
+      <TopBar rightLabel="Admin" />
+      <main className="flex-1 min-h-0">
+        <AdminDashboard />
       </main>
     </div>
   );

@@ -149,17 +149,17 @@ export function ChatInterface() {
     <div className="flex h-full flex-col">
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
         {messages.length === 0 ? (
-          <div className="mx-auto max-w-2xl pt-16 text-center">
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Vyasa AI Assistant
+          <div className="mx-auto max-w-2xl pt-14 text-center">
+            <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-primary">
+              PhD Admission · 2026–27 Session
+            </span>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+              How can I help you today?
             </h1>
-            <p className="mt-1 text-sm uppercase tracking-[0.18em] text-primary/80">
-              Your guide to PhD admissions
-            </p>
-            <p className="mt-4 text-muted-foreground">
-              Ask anything about eligibility, entrance, application, fees, or
-              important dates — every answer is drawn straight from the official
-              admission documents.
+            <p className="mt-3 text-muted-foreground">
+              Ask anything about eligibility, entrance pattern, application
+              process, fees, or important dates — every answer is drawn straight
+              from the official admission documents.
             </p>
             <div className="mt-8 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {SUGGESTIONS.map((s) => (

@@ -233,7 +233,7 @@ export function DocumentSidebar() {
         )}
       </div>
 
-      <div className="border-t px-3 py-3">
+      <div className="flex items-center justify-between border-t px-3 py-3">
         <button
           onClick={() => setTokenDialog(true)}
           className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
@@ -241,6 +241,13 @@ export function DocumentSidebar() {
           <KeyRound className="h-3 w-3" />
           {getStoredToken() ? "Update admin token" : "Set admin token"}
         </button>
+        <a
+          href="/"
+          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          title="Open the public chat view"
+        >
+          Public view ↗
+        </a>
       </div>
 
       <AdminTokenDialog

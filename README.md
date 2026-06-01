@@ -104,8 +104,17 @@ Restart the backend. The provider badge in the sidebar shows which path is live.
 
 ## Admin actions
 
-`Upload PDF`, `Refresh index`, and `Delete` require an admin token. Set `ADMIN_TOKEN` in
-`.env` and enter it once in the UI — it's stored in browser `localStorage`.
+Admin operations (upload PDFs, refresh index, delete) live on a hidden route:
+
+```
+http(s)://your-host/admin
+```
+
+This URL isn't linked from the public chat (`/`) so embedded portal users don't see it.
+Anyone who lands on `/admin` still needs the `ADMIN_TOKEN` to actually perform any action.
+Set `ADMIN_TOKEN` in `.env`; the UI prompts for it once and stores it in browser `localStorage`.
+
+`/admin` is also marked `noindex` so it won't show up in search engines.
 
 ## API surface
 

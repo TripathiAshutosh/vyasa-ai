@@ -3,9 +3,9 @@ import "./globals.css";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "Vyasa AI Assistant · PhD Admission 2026–27",
+  title: "Vyasa AI Assistant · CSJM University, Kanpur — PhD Admission 2026–27",
   description:
-    "Your guide to PhD admissions for the 2026–27 session — clear answers drawn from official admission documents.",
+    "Official PhD admission assistant for Chhatrapati Shahu Ji Maharaj University, Kanpur. Clear answers for the 2026–27 session, drawn straight from the admission documents.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

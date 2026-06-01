@@ -1,5 +1,7 @@
 import { GraduationCap } from "lucide-react";
 
+const UNIVERSITY_NAME = "Chhatrapati Shahu Ji Maharaj University, Kanpur";
+
 interface Props {
   /** Optional small label on the right (e.g., "Admin view"). */
   rightLabel?: string;
@@ -8,6 +10,16 @@ interface Props {
 export function TopBar({ rightLabel }: Props) {
   return (
     <header className="shrink-0 border-b bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40">
+      {/* University brand strip */}
+      <div className="bg-primary text-primary-foreground">
+        <div className="mx-auto max-w-5xl px-4 py-1.5 sm:px-6">
+          <p className="truncate text-center text-[11px] font-semibold uppercase tracking-[0.18em] sm:text-xs">
+            {UNIVERSITY_NAME}
+          </p>
+        </div>
+      </div>
+
+      {/* App header */}
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-6 py-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">

@@ -25,39 +25,42 @@ phd_bot/
 └── .env.example        # Root env, consumed by docker-compose
 ```
 
-## Quick start — local dev
+## Quick start — local dev (Docker, recommended)
 
-You'll need: Python 3.11+, Node 20+, and either an OpenAI key or (Groq + Jina) keys.
-
-### 1. Backend
+The same `./run.sh` that ships to the droplet runs locally. You only need Docker.
 
 ```bash
+cp .env.example .env                # fill in keys + ADMIN_TOKEN; set HTTP_PORT=8080 if 80 is taken
+./run.sh                            # builds, starts, auto-ingests data/ on first run
+```
+
+Then open <http://localhost> (or whatever `HTTP_PORT` you set). Admin dashboard at `/admin`.
+
+### Local dev — without Docker (hot-reload)
+
+For iterating on backend code with `uvicorn --reload`:
+
+```bash
+# Terminal 1 — backend
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # fill in OPENAI_API_KEY (or GROQ + JINA), and ADMIN_TOKEN
-export DATA_DIR=../data       # so it sees your PDFs
-export CHROMA_DIR=./chroma_db
+cp .env.example .env          # fill in keys + ADMIN_TOKEN
+export DATA_DIR=../data CHROMA_DIR=./chroma_db
 uvicorn app.main:app --reload --port 8000
+
+# Terminal 2 — frontend
+cd frontend
+cp .env.local.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:8000
+npm install
+npm run dev                         # http://localhost:3000
 ```
 
-Then in another shell, populate the index for the first time:
-
+Trigger the first index build (one time):
 ```bash
 curl -X POST http://localhost:8000/api/documents/refresh \
      -H "X-Admin-Token: $(grep ^ADMIN_TOKEN backend/.env | cut -d= -f2)"
 ```
-
-### 2. Frontend
-
-```bash
-cd frontend
-cp .env.local.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:8000
-npm install
-npm run dev
-```
-
-Open <http://localhost:3000>.
 
 ## Using a Groq custom-models JSON
 
@@ -131,38 +134,57 @@ Interactive docs at `/docs`.
 
 ## Deploy on a $6 DigitalOcean droplet
 
-1. Create an Ubuntu 22.04 droplet (basic, $6/mo). SSH in as `root`.
-2. Install Docker + compose plugin:
+1. Create an Ubuntu 24.04 droplet (basic, $6/mo). SSH in as `root`.
+2. Install Docker + git:
    ```bash
+   apt-get update && apt-get install -y git nano
    curl -fsSL https://get.docker.com | sh
    ```
 3. Clone the repo + configure:
    ```bash
-   git clone <your-repo-url> phd_bot && cd phd_bot
-   cp .env.example .env && nano .env       # fill keys, set SITE_ADDRESS=yourdomain.com
-   mkdir -p data && cp /path/to/*.pdf data/
+   cd /opt && git clone https://github.com/<you>/<repo>.git phd_bot && cd phd_bot
+   cp .env.example .env && nano .env       # fill keys, ADMIN_TOKEN, SITE_ADDRESS
+   # For opensource mode with a Groq custom-models JSON:
+   cp backend/models.config.example.json backend/models.config.json && nano backend/models.config.json
    ```
-4. Point your domain's `A` record at the droplet's public IP.
+4. Point your domain's `A` record at the droplet's public IP (optional — use `SITE_ADDRESS=:80` for IP-only access).
 5. Bring it up:
    ```bash
-   docker compose up -d --build
+   ./run.sh
    ```
-   Caddy will fetch a Let's Encrypt certificate automatically (assumes ports 80/443 are open).
-6. Trigger the first index build:
-   ```bash
-   curl -X POST https://yourdomain.com/api/documents/refresh \
-        -H "X-Admin-Token: <ADMIN_TOKEN from .env>"
-   ```
+   First run auto-ingests every PDF in `data/`. Caddy fetches a Let's Encrypt cert automatically when a real domain is set in `SITE_ADDRESS`.
 
-> No domain? Set `SITE_ADDRESS=:80` in `.env` and access the droplet's IP over plain HTTP.
+> No domain? Set `SITE_ADDRESS=:80` in `.env` and share `http://DROPLET_IP`.
+
+### `run.sh` cheat-sheet
+
+| Command | When to use |
+|---|---|
+| `./run.sh` | First boot, or routine restart with no PDF / dep changes. |
+| `./run.sh up --reingest` | You updated PDFs in `data/` (e.g. after `git pull`) and want vectors rebuilt automatically. |
+| `./run.sh up --no-cache` | A dependency changed (`requirements.txt`, `package.json`) — forces a clean image rebuild. |
+| `./run.sh up --no-cache --reingest` | Both of the above. Heaviest path. |
+| `./run.sh ingest` | Force a refresh against an already-running stack (no container restart). |
+| `./run.sh down` | Stop + remove containers. Chroma volume preserved. |
+| `./run.sh logs` | Tail logs from all three services. |
+| `./run.sh ps` | Show container status. |
 
 ### Updates
 
 ```bash
-git pull && docker compose up -d --build
+cd /opt/phd_bot && git pull && ./run.sh up --reingest    # if PDFs changed
+cd /opt/phd_bot && git pull && ./run.sh                  # code-only change
 ```
 
 The Chroma index lives in the `chroma_data` named volume and survives restarts.
+
+### Admin URL
+
+After deploy, the admin dashboard is at:
+```
+http(s)://your-host/admin
+```
+Not linked from the public chat; requires the `ADMIN_TOKEN` from `.env` to perform any action.
 
 ## Quality knobs (`.env`)
 

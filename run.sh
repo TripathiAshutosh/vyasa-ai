@@ -10,6 +10,7 @@
 #   ./run.sh ps             # show container status
 #   ./run.sh ingest         # trigger /api/documents/refresh
 #   ./run.sh up --no-cache  # force a clean rebuild
+#   ./run.sh up --reingest  # build + start + force re-embed all PDFs in data/
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -67,7 +68,7 @@ case "$CMD" in
     CMD=up
     ;;
   -h|--help)
-    sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
     ;;
   *)
@@ -163,10 +164,12 @@ fi
 
 # ---------- build flags ----------
 BUILD_FLAGS=()
+FORCE_REINGEST=0
 for arg in "$@"; do
   case "$arg" in
-    --no-cache) BUILD_FLAGS+=(--no-cache) ;;
-    --pull)     BUILD_FLAGS+=(--pull) ;;
+    --no-cache)  BUILD_FLAGS+=(--no-cache) ;;
+    --pull)      BUILD_FLAGS+=(--pull) ;;
+    --reingest)  FORCE_REINGEST=1 ;;
   esac
 done
 
@@ -199,19 +202,29 @@ if [ "$ready" != "1" ]; then
   exit 1
 fi
 
-# ---------- first-time ingest if empty + data present ----------
+# ---------- ingest if empty, or forced via --reingest ----------
 chunks=$(curl -sf "http://localhost:${HTTP_PORT}/api/health" \
   | python3 -c "import sys,json;print(json.load(sys.stdin).get('num_chunks',0))" 2>/dev/null || echo 0)
 
-if [ "$chunks" = "0" ] && [ "$pdf_count" != "0" ]; then
-  ok "Index is empty — ingesting $pdf_count PDF(s)..."
+should_ingest=0
+reason=""
+if [ "$FORCE_REINGEST" = "1" ] && [ "$pdf_count" != "0" ]; then
+  should_ingest=1
+  reason="--reingest requested"
+elif [ "$chunks" = "0" ] && [ "$pdf_count" != "0" ]; then
+  should_ingest=1
+  reason="index empty"
+fi
+
+if [ "$should_ingest" = "1" ]; then
+  ok "Ingesting $pdf_count PDF(s) — $reason..."
   if curl -fsS -X POST "http://localhost:${HTTP_PORT}/api/documents/refresh" \
         -H "X-Admin-Token: ${ADMIN_TOKEN}" -o /tmp/phd_bot_ingest.json; then
     say "$(cat /tmp/phd_bot_ingest.json)"
     rm -f /tmp/phd_bot_ingest.json
     ok "Ingestion complete."
   else
-    warn "Initial ingestion failed — trigger from the UI sidebar instead."
+    warn "Ingestion failed — trigger from /admin instead."
   fi
 fi
 

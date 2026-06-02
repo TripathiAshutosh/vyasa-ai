@@ -186,6 +186,87 @@ http(s)://your-host/admin
 ```
 Not linked from the public chat; requires the `ADMIN_TOKEN` from `.env` to perform any action.
 
+## Release workflow (production)
+
+Once the bot is live, we separate dev work from what's deployed using a `production`
+branch + tagged releases. Rollback is then two commands.
+
+### Branch / tag layout
+
+| Where | What it holds |
+|---|---|
+| `main` | Day-to-day development. Push freely; live site is unaffected. |
+| `production` | Only stable, deployed releases. Fast-forwarded from `main` per release. |
+| Tags `vX.Y.Z` | One per release. The droplet checks out a specific tag or tracks `production`. |
+| Droplet | Whatever's checked out there — usually the latest `vX.Y.Z` (via `production`). |
+
+### Cutting a release
+
+When `main` is in a state worth deploying:
+
+```bash
+git checkout production
+git merge --ff-only main
+git tag -a vX.Y.Z -m "vX.Y.Z: <short description>"
+git push origin production --tags
+```
+
+Versioning follows semver:
+
+- **Patch** (`v1.0.1`): bug fixes, copy tweaks, no behavior change.
+- **Minor** (`v1.1.0`): new features that don't break anything.
+- **Major** (`v2.0.0`): breaking changes (e.g., requires `.env` edits or a re-ingest).
+
+### Deploying a release to the droplet
+
+The droplet tracks the `production` branch. To pull a freshly cut release:
+
+```bash
+cd /opt/phd_bot
+git fetch --all --tags
+git checkout production       # one-time switch if previously on main
+git pull origin production
+./run.sh                      # plain redeploy
+# or:
+./run.sh up --reingest        # if PDFs changed in this release
+./run.sh up --no-cache        # if dependencies changed in this release
+```
+
+### Rollback (under a minute)
+
+**Quick rollback** — just deploy a previous tag without changing the `production` branch:
+
+```bash
+cd /opt/phd_bot
+git fetch --tags
+git checkout v1.0.0           # any earlier tag; detached HEAD is fine for deploy
+./run.sh down && ./run.sh
+```
+
+The Chroma index, PDFs, and `.env` are untouched — only the code reverts.
+
+**Permanent rollback** — also move the `production` branch back so the next `git pull production` keeps the rollback:
+
+```bash
+# Local
+git checkout production
+git reset --hard v1.0.0
+git push --force-with-lease origin production
+
+# On droplet
+git checkout production
+git pull origin production
+./run.sh
+```
+
+### What's deployed where (after each push + deploy)
+
+| Place | Code |
+|---|---|
+| `main` (your dev branch) | Latest commits — may include unreleased work. |
+| `production` | Latest tagged release only. |
+| Droplet (live URL) | Whatever's checked out — confirm with `git describe --tags` on the droplet. |
+
 ## Quality knobs (`.env`)
 
 | Var | Default | Notes |

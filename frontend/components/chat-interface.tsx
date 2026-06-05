@@ -97,6 +97,12 @@ export function ChatInterface() {
                   : m
               )
             ),
+          onMeta: ({ event_id }) =>
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsg.id ? { ...m, eventId: event_id } : m
+              )
+            ),
           onError: (err) => {
             const friendly = humanizeError(err);
             toast.error(friendly);

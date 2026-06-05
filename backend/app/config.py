@@ -51,6 +51,16 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "http://localhost:3000"
 
+    # --- Analytics (admin dashboard) ---
+    # Master switch. When off, no events are recorded and the chat path is untouched.
+    ANALYTICS_ENABLED: bool = True
+    ANALYTICS_DIR: str = "/app/analytics"
+    # Salt for hashing client IPs. Raw IPs are never stored — only sha256(salt + ip).
+    ANALYTICS_IP_SALT: str = "change-me-salt"
+    # Cosine similarity above which a query joins an existing intent cluster.
+    # Lower → fewer, broader clusters; higher → more, tighter clusters.
+    CLUSTER_THRESHOLD: float = 0.83
+
     # Optional: a custom-models JSON dropped in alongside .env.
     # Default name matches the file produced by Groq's chat console.
     MODELS_CONFIG_PATH: str = "models.config.json"

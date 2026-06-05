@@ -12,7 +12,9 @@ from app.config import settings
 class LLM(Protocol):
     name: str
 
-    async def stream(self, messages: list[dict]) -> AsyncIterator[str]: ...
+    async def stream(
+        self, messages: list[dict], max_tokens: int | None = None
+    ) -> AsyncIterator[str]: ...
 
 
 class OpenAIChatLLM:
@@ -22,12 +24,18 @@ class OpenAIChatLLM:
         self._client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_BASE_URL)
         self.name = settings.OPENAI_LLM_MODEL
 
-    async def stream(self, messages: list[dict]) -> AsyncIterator[str]:
+    async def stream(
+        self, messages: list[dict], max_tokens: int | None = None
+    ) -> AsyncIterator[str]:
+        kwargs: dict = {}
+        if max_tokens is not None:
+            kwargs["max_completion_tokens"] = max_tokens
         resp = await self._client.chat.completions.create(
             model=self.name,
             messages=messages,
             temperature=0.1,
             stream=True,
+            **kwargs,
         )
         async for chunk in resp:
             if not chunk.choices:
@@ -48,17 +56,21 @@ class GroqChatLLM:
             "Content-Type": "application/json",
         }
 
-    async def stream(self, messages: list[dict]) -> AsyncIterator[str]:
+    async def stream(
+        self, messages: list[dict], max_tokens: int | None = None
+    ) -> AsyncIterator[str]:
         # gpt-oss-* are reasoning models served via Groq's OpenAI-compatible API.
         # They require `max_completion_tokens`; `max_tokens` triggers HTTP 413.
         # Plain chat models (llama-*, mixtral-*) accept either, so we send the
         # newer field name universally — it's forward-compatible.
+        # Groq reserves the full requested budget against rate limits, so small
+        # auxiliary calls (e.g. the analytics labeler) pass a tighter max_tokens.
         payload = {
             "model": self.name,
             "messages": messages,
             "temperature": 0.1,
             "stream": True,
-            "max_completion_tokens": settings.GROQ_MAX_TOKENS,
+            "max_completion_tokens": max_tokens or settings.GROQ_MAX_TOKENS,
         }
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream("POST", self._endpoint, headers=self._headers, json=payload) as r:

@@ -79,6 +79,7 @@ GROQ_API_KEY=<provided>          # if opensource
 JINA_API_KEY=<provided>          # if opensource (embeddings + reranker)
 OPENAI_API_KEY=<provided>        # if openai
 ADMIN_TOKEN=<pick a strong random string — e.g. `openssl rand -hex 24`>
+ANALYTICS_IP_SALT=<another random string — e.g. `openssl rand -hex 16`>
 SITE_ADDRESS=vyasa.csjmu.ac.in   # the subdomain you've provisioned
 HTTP_PORT=80
 HTTPS_PORT=443
@@ -172,13 +173,30 @@ git pull
 ./run.sh            # start again
 ```
 
+### Usage analytics (admin only)
+
+Open `https://vyasa.csjmu.ac.in/admin` → **Analytics** tab (same admin token). It shows
+query volumes, unique visitors, busiest hours (IST), questions grouped by topic and
+intent, **unanswered questions** (use this list to decide what to add to the brochure
+or FAQ), answer 👍/👎 feedback, latency, and estimated API cost.
+
+Privacy: analytics is fully anonymous. No names, emails, or accounts exist; client IPs
+are stored only as salted hashes (the `ANALYTICS_IP_SALT` value from step 3) and the
+question text itself is the only free-text stored. Recommended retention: clear data
+older than one admission cycle during the yearly PDF refresh (ask the developer for a
+one-line command, or simply delete the `phd_bot_analytics_data` Docker volume).
+Analytics can be disabled entirely with `ANALYTICS_ENABLED=false` in `.env`.
+
 ### Backups (recommended monthly)
 ```bash
 docker run --rm \
   -v phd_bot_chroma_data:/d -v $(pwd):/b alpine \
   tar czf /b/chroma-backup-$(date +%F).tar.gz /d
+docker run --rm \
+  -v phd_bot_analytics_data:/d -v $(pwd):/b alpine \
+  tar czf /b/analytics-backup-$(date +%F).tar.gz /d
 ```
-Stash the resulting `.tar.gz` somewhere off the server.
+Stash the resulting `.tar.gz` files somewhere off the server.
 
 ### Monitoring (optional, free)
 Sign up for [UptimeRobot](https://uptimerobot.com) (free tier), have it ping `https://vyasa.csjmu.ac.in/api/health` every 5 minutes. It will email/SMS if the service becomes unreachable.

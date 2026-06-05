@@ -6,6 +6,8 @@
     handle @api {
         reverse_proxy backend:8000 {
             flush_interval -1
+            # Real client IP for analytics (backend stores only a salted hash).
+            header_up X-Real-IP {remote_host}
         }
     }
 

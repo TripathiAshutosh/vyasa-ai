@@ -35,6 +35,18 @@ class Source:
     score: float | None = None
 
 
+@dataclass
+class QueryMeta:
+    """Retrieval-side signals captured for analytics (the embedding is reused
+    from retrieval — analytics never makes its own embedding call)."""
+
+    query: str
+    embedding: list[float] | None
+    top_score: float | None
+    refused: bool
+    prompt_chars: int
+
+
 def _build_context(sources: list[Source], max_chars: int = 12000) -> str:
     parts: list[str] = []
     total = 0
@@ -60,11 +72,11 @@ class RAGPipeline:
         self.store = store
         self.reranker = reranker
 
-    async def retrieve(self, query: str) -> list[Source]:
+    async def retrieve(self, query: str) -> tuple[list[Source], list[float]]:
         q_emb = await self.embedder.embed_query(query)
         hits = self.store.query(q_emb, top_k=settings.TOP_K)
         if not hits:
-            return []
+            return [], q_emb
         if self.reranker is not None and len(hits) > settings.RERANK_TOP_K:
             ranked = await self.reranker.rerank(
                 query=query,
@@ -83,7 +95,7 @@ class RAGPipeline:
                         score=score,
                     )
                 )
-            return picked
+            return picked, q_emb
         # No reranker — just truncate
         out: list[Source] = []
         for h in hits[: settings.RERANK_TOP_K]:
@@ -96,27 +108,34 @@ class RAGPipeline:
                     score=(1.0 - h["distance"]) if h.get("distance") is not None else None,
                 )
             )
-        return out
+        return out, q_emb
 
     async def stream_answer(
         self, messages: list[dict]
-    ) -> tuple[AsyncIterator[str], list[Source]]:
+    ) -> tuple[AsyncIterator[str], list[Source], QueryMeta]:
         last_user = next(
             (m["content"] for m in reversed(messages) if m.get("role") == "user"), ""
         )
-        sources = await self.retrieve(last_user) if last_user else []
+        if last_user:
+            sources, q_emb = await self.retrieve(last_user)
+        else:
+            sources, q_emb = [], None
 
         # If retrieval clearly missed (top score below threshold) the question is
         # off-topic for our PDFs. Skip the LLM call, return a canned refusal, and
         # drop the citations so the UI doesn't show misleading source chips.
         top_score = sources[0].score if sources and sources[0].score is not None else None
         if top_score is not None and top_score < settings.RELEVANCE_THRESHOLD:
+            meta = QueryMeta(
+                query=last_user, embedding=q_emb, top_score=top_score,
+                refused=True, prompt_chars=0,
+            )
             async def _refuse() -> AsyncIterator[str]:
                 yield (
                     "I don't have that in the provided documents. "
                     "Please check the official notification or contact the admissions office."
                 )
-            return _refuse(), []
+            return _refuse(), [], meta
 
         context = _build_context(sources) if sources else "(no documents indexed)"
 
@@ -135,4 +154,11 @@ class RAGPipeline:
                 ),
             }
         )
-        return self.llm.stream(chat_messages), sources
+        meta = QueryMeta(
+            query=last_user,
+            embedding=q_emb,
+            top_score=top_score,
+            refused=False,
+            prompt_chars=sum(len(m["content"]) for m in chat_messages),
+        )
+        return self.llm.stream(chat_messages), sources, meta

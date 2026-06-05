@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AdminDashboard } from "@/components/admin-dashboard";
+import { AdminTabs } from "@/components/admin-tabs";
 import { TopBar } from "@/components/top-bar";
 
 export const metadata: Metadata = {
@@ -12,7 +12,7 @@ export default function AdminPage() {
     <div className="flex h-screen w-full flex-col overflow-hidden bg-muted/20">
       <TopBar rightLabel="Admin" />
       <main className="flex-1 min-h-0">
-        <AdminDashboard />
+        <AdminTabs />
       </main>
     </div>
   );

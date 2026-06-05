@@ -119,6 +119,20 @@ Set `ADMIN_TOKEN` in `.env`; the UI prompts for it once and stores it in browser
 
 `/admin` is also marked `noindex` so it won't show up in search engines.
 
+### Analytics (admin → Analytics tab)
+
+Anonymous usage analytics for the university team: query volume, unique visitors
+(client-generated IDs + salted IP hash — raw IPs are never stored), hour-of-day
+heatmap (IST), questions grouped by intent (embedding clusters, reusing the query
+embedding already computed for retrieval — zero extra API calls), topic breakdown
+(labeled in the background by the configured LLM), unanswered/low-confidence
+questions, 👍/👎 answer feedback, latency percentiles, and estimated token cost.
+
+Storage is a SQLite file on the `analytics_data` volume; capture runs in background
+tasks after the response is streamed, so a broken analytics DB never affects chat.
+Knobs in `.env`: `ANALYTICS_ENABLED` (kill switch), `ANALYTICS_IP_SALT` (required in
+prod), `CLUSTER_THRESHOLD` (intent-grouping tightness, default 0.83).
+
 ## API surface
 
 | Method | Path | Auth | Purpose |
@@ -128,7 +142,9 @@ Set `ADMIN_TOKEN` in `.env`; the UI prompts for it once and stores it in browser
 | POST | `/api/documents/upload` | admin | Upload a PDF (multipart `file`) |
 | POST | `/api/documents/refresh` | admin | Wipe + re-ingest everything in `DATA_DIR` |
 | DELETE | `/api/documents/{filename}` | admin | Remove a single file + its chunks |
-| POST | `/api/chat` | – | Body `{messages: [{role, content}]}` → SSE stream |
+| POST | `/api/chat` | – | Body `{messages: [{role, content}]}` → SSE stream (`sources`, tokens, `meta`, `done`) |
+| POST | `/api/feedback` | – | Body `{event_id, rating: 1\|-1}` — 👍/👎 on an answer |
+| GET | `/api/analytics/*` | admin | `overview`, `timeseries`, `topics`, `gaps`, `rag`, `performance`, `feedback` |
 
 Interactive docs at `/docs`.
 

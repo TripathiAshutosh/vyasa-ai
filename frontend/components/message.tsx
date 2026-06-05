@@ -3,8 +3,8 @@
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { FileText, User, Bot } from "lucide-react";
-import type { Source } from "@/lib/api";
+import { FileText, User, Bot, ThumbsUp, ThumbsDown } from "lucide-react";
+import { submitFeedback, type Source } from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,8 @@ export interface UIMessage {
   content: string;
   sources?: Source[];
   pending?: boolean;
+  /** Backend analytics event id — enables the 👍/👎 buttons. */
+  eventId?: number;
 }
 
 interface Props {
@@ -27,7 +29,14 @@ interface Props {
 
 export function MessageBubble({ msg }: Props) {
   const [openSource, setOpenSource] = React.useState<Source | null>(null);
+  const [rating, setRating] = React.useState<1 | -1 | null>(null);
   const isUser = msg.role === "user";
+
+  const rate = (value: 1 | -1) => {
+    if (!msg.eventId) return;
+    setRating(value); // optimistic — re-clicking the other button flips it
+    submitFeedback(msg.eventId, value).catch(() => setRating(null));
+  };
 
   return (
     <div className={cn("flex gap-3 animate-slide-up", isUser ? "justify-end" : "justify-start")}>
@@ -74,6 +83,40 @@ export function MessageBubble({ msg }: Props) {
                 <span className="text-foreground/70">· p.{s.page}</span>
               </button>
             ))}
+          </div>
+        )}
+
+        {!isUser && !msg.pending && !!msg.eventId && msg.content && (
+          <div className="mt-2 flex items-center gap-1">
+            <button
+              onClick={() => rate(1)}
+              title="Helpful answer"
+              className={cn(
+                "rounded-md p-1 transition-colors hover:bg-background/80",
+                rating === 1
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-muted-foreground/60 hover:text-foreground"
+              )}
+            >
+              <ThumbsUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => rate(-1)}
+              title="Not helpful"
+              className={cn(
+                "rounded-md p-1 transition-colors hover:bg-background/80",
+                rating === -1
+                  ? "text-destructive"
+                  : "text-muted-foreground/60 hover:text-foreground"
+              )}
+            >
+              <ThumbsDown className="h-3.5 w-3.5" />
+            </button>
+            {rating !== null && (
+              <span className="ml-1 text-[11px] text-muted-foreground">
+                Thanks for the feedback!
+              </span>
+            )}
           </div>
         )}
       </div>

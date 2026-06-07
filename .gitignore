@@ -43,3 +43,4 @@ data/.gitkeep
 
 # Analytics DB snapshots (created by ./run.sh backup)
 backups/
+frontend/tsconfig.tsbuildinfo

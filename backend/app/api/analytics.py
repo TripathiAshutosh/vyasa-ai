@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query
 
 from app.analytics import db
 from app.analytics.cost import estimate_cost_usd
+from app.config import settings
 from app.deps import require_admin
 
 router = APIRouter(prefix="/analytics", dependencies=[Depends(require_admin)])
@@ -269,6 +270,19 @@ def performance(
             """,
             (f, t),
         ).fetchall()
+        # Per-provider usage. With the fallback chain, llm_model records the
+        # provider that actually served each request (display name), so this
+        # shows failovers and paid-tier overflow at a glance.
+        model_rows = conn.execute(
+            """
+            SELECT llm_model, COUNT(*) AS queries,
+                   SUM(tokens_in) ti, SUM(tokens_out) tout,
+                   AVG(error) AS error_rate
+            FROM events WHERE ts_epoch BETWEEN ? AND ?
+            GROUP BY llm_model ORDER BY queries DESC
+            """,
+            (f, t),
+        ).fetchall()
     days: dict[str, dict] = {}
     for r in daily_cost:
         d = days.setdefault(
@@ -284,6 +298,39 @@ def performance(
     ]
     for d in daily:
         d.pop("errors", None)
+    # Anonymize providers before they leave the server: the DB keeps real
+    # display names (query it directly when needed), but the API only exposes
+    # tier labels following the chain order in models.config.json (L1 = primary).
+    # Legacy pre-chain rows recorded the raw model id — they fold into the tier
+    # of the chain entry that served them (setdefault: first occurrence wins).
+    alias: dict[str, str] = {}
+    for i, c in enumerate(settings.LLM_CHAIN):
+        alias.setdefault(c["display"], f"L{i + 1}")
+        alias.setdefault(c["model"], f"L{i + 1}")
+    tiers: dict[str, dict] = {}
+    for r in model_rows:
+        name = r["llm_model"] or "unknown"
+        label = alias.get(name, "other")
+        d = tiers.setdefault(
+            label,
+            {"queries": 0, "tokens_in": 0, "tokens_out": 0, "errors": 0.0, "cost": 0.0},
+        )
+        d["queries"] += r["queries"]
+        d["tokens_in"] += r["ti"] or 0
+        d["tokens_out"] += r["tout"] or 0
+        d["errors"] += (r["error_rate"] or 0) * r["queries"]
+        d["cost"] += estimate_cost_usd(name, r["ti"], r["tout"])
+    by_model = [
+        {
+            "model": label,
+            "queries": d["queries"],
+            "tokens_in": d["tokens_in"],
+            "tokens_out": d["tokens_out"],
+            "error_rate": round(d["errors"] / d["queries"], 4) if d["queries"] else 0.0,
+            "est_cost_usd": round(d["cost"], 4),
+        }
+        for label, d in sorted(tiers.items())
+    ]
     return {
         "latency_ttfb_ms": {"p50": _pct(ttfb, 50), "p90": _pct(ttfb, 90), "p99": _pct(ttfb, 99)},
         "latency_total_ms": {"p50": _pct(total, 50), "p90": _pct(total, 90), "p99": _pct(total, 99)},
@@ -291,6 +338,7 @@ def performance(
         "tokens_out": tokens["tout"] or 0,
         "tokens_estimated": True,
         "daily": daily,
+        "by_model": by_model,
     }
 
 

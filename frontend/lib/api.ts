@@ -310,6 +310,14 @@ export interface AnalyticsPerformance {
   tokens_out: number;
   tokens_estimated: boolean;
   daily: { day: string; est_cost_usd: number; queries: number; error_rate: number }[];
+  by_model: {
+    model: string;
+    queries: number;
+    tokens_in: number;
+    tokens_out: number;
+    error_rate: number;
+    est_cost_usd: number;
+  }[];
 }
 
 export interface AnalyticsFeedback {

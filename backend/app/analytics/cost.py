@@ -7,6 +7,9 @@ PRICES: dict[str, tuple[float, float]] = {
     "gpt-4o": (2.50, 10.00),
     "gpt-4.1-mini": (0.40, 1.60),
     "text-embedding-3-small": (0.02, 0.0),
+    # Fallback-chain providers are recorded by display name (the model id alone
+    # can't tell free Groq from paid DeepInfra — both serve openai/gpt-oss-120b).
+    "GPT-OSS 120B [DeepInfra]": (0.09, 0.45),
 }
 
 

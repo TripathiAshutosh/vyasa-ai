@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     # Picks an entry from custom_models[]; matches model_display_name or model.
     # Empty => first entry wins.
     MODELS_CONFIG_SELECT: str = ""
+    # Ordered LLM provider chain built from custom_models[] (first = primary,
+    # rest are rate-limit fallbacks). Populated by _apply_models_config.
+    LLM_CHAIN: list[dict] = []
 
     @property
     def cors_origins_list(self) -> list[str]:
@@ -97,42 +100,61 @@ class Settings(BaseSettings):
         if not entries:
             return self
 
-        wanted = self.MODELS_CONFIG_SELECT.strip().lower()
-        picked = None
-        if wanted:
-            for m in entries:
-                names = {
-                    str(m.get("model_display_name", "")).lower(),
-                    str(m.get("model", "")).lower(),
-                }
-                if wanted in names:
-                    picked = m
-                    break
-        if picked is None:
-            picked = entries[0]
-
-        # All these fields are Groq-shaped (OpenAI-compatible chat completions).
-        # The "provider" field in the JSON is descriptive, not authoritative.
-        if picked.get("api_key"):
-            object.__setattr__(self, "GROQ_API_KEY", picked["api_key"])
-        if picked.get("model"):
-            object.__setattr__(self, "GROQ_LLM_MODEL", picked["model"])
-        if picked.get("base_url"):
-            object.__setattr__(self, "GROQ_BASE_URL", picked["base_url"])
-        if picked.get("max_tokens"):
-            # The JSON value is usually the *model's* total output ceiling (e.g. 65536).
-            # For grounded Q&A we want a much smaller per-request budget — capping at
-            # 4096 keeps reasoning + answer well under any model's limit.
+        # Build the provider chain: file order = fallback priority. Entries
+        # with a placeholder key (containing "PASTE") or missing fields are
+        # skipped, so the chain grows as real keys get filled in.
+        chain: list[dict] = []
+        for m in entries:
+            key = str(m.get("api_key") or "").strip()
+            model = str(m.get("model") or "").strip()
+            base_url = str(m.get("base_url") or "").strip()
+            if not key or "PASTE" in key.upper() or not model or not base_url:
+                continue
+            # The JSON max_tokens is usually the *model's* total output ceiling
+            # (e.g. 65536). For grounded Q&A we want a much smaller per-request
+            # budget — capping at 4096 keeps reasoning + answer well under any
+            # model's limit.
             try:
-                object.__setattr__(self, "GROQ_MAX_TOKENS", min(int(picked["max_tokens"]), 4096))
+                max_tokens = min(int(m.get("max_tokens") or 0), 4096)
             except (TypeError, ValueError):
-                pass
+                max_tokens = 0
+            chain.append(
+                {
+                    "display": str(m.get("model_display_name") or model),
+                    "model": model,
+                    "base_url": base_url,
+                    "api_key": key,
+                    "max_tokens": max_tokens or self.GROQ_MAX_TOKENS,
+                }
+            )
+
+        if not chain:
+            log.warning("%s has no usable custom_models entries", path.name)
+            return self
+
+        # MODELS_CONFIG_SELECT promotes the matched entry to primary.
+        wanted = self.MODELS_CONFIG_SELECT.strip().lower()
+        if wanted:
+            for i, c in enumerate(chain):
+                if wanted in {c["display"].lower(), c["model"].lower()}:
+                    chain.insert(0, chain.pop(i))
+                    break
+
+        # The primary also populates the Groq-shaped fields (health checks and
+        # single-provider mode read these). The "provider" field in the JSON is
+        # descriptive, not authoritative.
+        primary = chain[0]
+        object.__setattr__(self, "GROQ_API_KEY", primary["api_key"])
+        object.__setattr__(self, "GROQ_LLM_MODEL", primary["model"])
+        object.__setattr__(self, "GROQ_BASE_URL", primary["base_url"])
+        object.__setattr__(self, "GROQ_MAX_TOKENS", primary["max_tokens"])
+        object.__setattr__(self, "LLM_CHAIN", chain)
 
         log.info(
-            "Loaded model from %s: display=%r model=%s",
+            "Loaded %d model(s) from %s: %s",
+            len(chain),
             path.name,
-            picked.get("model_display_name"),
-            picked.get("model"),
+            " -> ".join(c["display"] for c in chain),
         )
         return self
 

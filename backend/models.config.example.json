@@ -1,11 +1,27 @@
 {
-  "_comment": "Template. Copy to models.config.json (gitignored) and put your real key there. The first custom_models[] entry is used; set MODELS_CONFIG_SELECT to a model_display_name to pick a different one.",
+  "_comment": "Template. Copy to models.config.json (gitignored) and put real keys there. Entries are tried in order: first = primary, the rest are rate-limit fallbacks. Entries whose api_key contains PASTE are ignored, so fill keys in as you get them. MODELS_CONFIG_SELECT promotes an entry to primary.",
   "custom_models": [
+    {
+      "model_display_name": "GPT-OSS 120B [Cerebras]",
+      "model": "gpt-oss-120b",
+      "base_url": "https://api.cerebras.ai/v1",
+      "api_key": "PASTE-CEREBRAS-KEY-HERE",
+      "provider": "generic-chat-completion-api",
+      "max_tokens": 65536
+    },
     {
       "model_display_name": "GPT-OSS 120B [Groq]",
       "model": "openai/gpt-oss-120b",
       "base_url": "https://api.groq.com/openai/v1",
-      "api_key": "gsk_REPLACE_ME",
+      "api_key": "PASTE-GROQ-KEY-HERE",
+      "provider": "generic-chat-completion-api",
+      "max_tokens": 65536
+    },
+    {
+      "model_display_name": "GPT-OSS 120B [DeepInfra]",
+      "model": "openai/gpt-oss-120b",
+      "base_url": "https://api.deepinfra.com/v1/openai",
+      "api_key": "PASTE-DEEPINFRA-KEY-HERE",
       "provider": "generic-chat-completion-api",
       "max_tokens": 65536
     }

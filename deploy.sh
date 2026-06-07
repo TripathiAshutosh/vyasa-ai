@@ -89,6 +89,7 @@ rsync -az --delete \
   --exclude='.env.local' \
   --exclude='.deploy.env' \
   --exclude='backend/models.config.json' \
+  --exclude='backups/' \
   --exclude='backend/.env' \
   --exclude='backend/.venv/' \
   --exclude='backend/chroma_db/' \

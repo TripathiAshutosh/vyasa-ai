@@ -40,3 +40,6 @@ Thumbs.db
 
 # Compose volumes (host-mapped chroma if any)
 data/.gitkeep
+
+# Analytics DB snapshots (created by ./run.sh backup)
+backups/

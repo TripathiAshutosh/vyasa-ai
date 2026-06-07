@@ -89,16 +89,6 @@ export function PerformancePanel({ data }: { data: AnalyticsPerformance }) {
                 defaultDir: "desc",
                 render: (m) => pct(m.error_rate),
               },
-              {
-                key: "cost",
-                label: "Est. cost",
-                align: "right",
-                className: "tabular-nums",
-                sortValue: (m) => m.est_cost_usd,
-                defaultDir: "desc",
-                render: (m) =>
-                  m.est_cost_usd > 0 ? `$${m.est_cost_usd.toFixed(2)}` : "free",
-              },
             ]}
           />
         </div>

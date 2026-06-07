@@ -62,32 +62,43 @@ curl -X POST http://localhost:8000/api/documents/refresh \
      -H "X-Admin-Token: $(grep ^ADMIN_TOKEN backend/.env | cut -d= -f2)"
 ```
 
-## Using a Groq custom-models JSON
+## Custom models JSON — LLM provider fallback chain
 
-If you already have a Groq export like this:
+`backend/models.config.json` (gitignored) defines an **ordered provider chain**. Entries are
+tried top-to-bottom: the first is the primary, the rest are rate-limit fallbacks. A provider
+that returns 429/5xx is put on cooldown for the period its API asks (`Retry-After`), so
+subsequent requests skip it with zero latency overhead until it recovers.
 
 ```json
 {
   "custom_models": [
-    {
-      "model_display_name": "GPT-OSS 120B [Groq]",
+    { "model_display_name": "GPT-OSS 120B [Cerebras]",
+      "model": "gpt-oss-120b",
+      "base_url": "https://api.cerebras.ai/v1",
+      "api_key": "csk-…", "provider": "generic-chat-completion-api", "max_tokens": 65536 },
+    { "model_display_name": "GPT-OSS 120B [Groq]",
       "model": "openai/gpt-oss-120b",
       "base_url": "https://api.groq.com/openai/v1",
-      "api_key": "gsk_…",
-      "provider": "generic-chat-completion-api",
-      "max_tokens": 65536
-    }
+      "api_key": "gsk_…", "provider": "generic-chat-completion-api", "max_tokens": 65536 },
+    { "model_display_name": "GPT-OSS 120B [DeepInfra]",
+      "model": "openai/gpt-oss-120b",
+      "base_url": "https://api.deepinfra.com/v1/openai",
+      "api_key": "PASTE-DEEPINFRA-KEY-HERE", "provider": "generic-chat-completion-api", "max_tokens": 65536 }
   ]
 }
 ```
 
-Drop it at `backend/models.config.json` (gitignored). On startup the backend will use its
-`model`, `base_url`, `api_key`, and `max_tokens` instead of the corresponding `GROQ_*` env
-vars — so you don't need to copy them into `.env`. To select a specific entry when the file
-has more than one model, set `MODELS_CONFIG_SELECT` to the `model_display_name` (or `model`).
-A template is provided at `backend/models.config.example.json`.
-
-`max_tokens` is clamped to 8192 — Q&A answers never need more, and large values waste budget.
+- Entries whose `api_key` contains `PASTE` (or is empty) are **skipped** — fill keys in as you
+  get them; no code change, just restart the backend.
+- A single entry behaves exactly like the old single-provider setup.
+- `MODELS_CONFIG_SELECT` (display name or model id) promotes an entry to primary.
+- On startup the primary's `model`, `base_url`, `api_key` and `max_tokens` replace the
+  corresponding `GROQ_*` env vars. `max_tokens` is clamped to 4096.
+- **The file is gitignored and excluded from `deploy.sh` rsync** — it carries real keys, so it
+  is edited *on the droplet* directly (template: `backend/models.config.example.json`). After
+  editing: `docker compose restart backend` (it's a bind-mount; no rebuild).
+- The admin dashboard shows providers as anonymized tiers (`L1`/`L2`/`L3`, chain order); real
+  names are stored only in the analytics DB.
 
 ## Switching providers
 
@@ -184,15 +195,22 @@ Interactive docs at `/docs`.
 | `./run.sh down` | Stop + remove containers. Chroma volume preserved. |
 | `./run.sh logs` | Tail logs from all three services. |
 | `./run.sh ps` | Show container status. |
+| `./run.sh backup` | Snapshot the analytics DB to `./backups/` (zero downtime; also auto-runs before every `up`; newest 14 kept). |
+| `./run.sh restore FILE` | Restore the analytics DB from a snapshot. Integrity-checks the file, saves the current DB as `pre-restore-*` first, restarts the backend. |
 
 ### Updates
 
+> ⚠️ **Don't `git pull` `main` on the droplet.** Production deploys go through the
+> release workflow below (cut a tag on `production`, pull *that*). Pulling `main`
+> directly puts unreleased dev work live and breaks tag-based rollback.
+
 ```bash
-cd /opt/phd_bot && git pull && ./run.sh up --reingest    # if PDFs changed
-cd /opt/phd_bot && git pull && ./run.sh                  # code-only change
+# On the droplet — deploys the latest cut release only:
+cd /opt/phd_bot && git checkout production && git pull origin production && ./run.sh
 ```
 
-The Chroma index lives in the `chroma_data` named volume and survives restarts.
+The Chroma index lives in the `chroma_data` named volume and survives restarts. The
+analytics DB is snapshotted to `./backups/` automatically before every `./run.sh up`.
 
 ### Admin URL
 
@@ -260,6 +278,13 @@ git checkout v1.0.0           # any earlier tag; detached HEAD is fine for deplo
 ```
 
 The Chroma index, PDFs, and `.env` are untouched — only the code reverts.
+
+If *data* (not code) needs rolling back, every deploy left an analytics snapshot:
+
+```bash
+ls -1t backups/                                    # newest first
+./run.sh restore backups/analytics-<stamp>.db      # checked, reversible, ~10s downtime
+```
 
 **Permanent rollback** — also move the `production` branch back so the next `git pull production` keeps the rollback:
 

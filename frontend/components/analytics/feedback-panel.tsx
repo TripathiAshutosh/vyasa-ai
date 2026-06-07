@@ -1,6 +1,7 @@
 "use client";
 
 import type { AnalyticsFeedback } from "@/lib/api";
+import { DataTable } from "./data-table";
 import { SectionCard, pct } from "./section";
 
 export function FeedbackPanel({ data }: { data: AnalyticsFeedback }) {
@@ -18,37 +19,57 @@ export function FeedbackPanel({ data }: { data: AnalyticsFeedback }) {
           No 👎-rated answers in this period.
         </p>
       ) : (
-        <div className="max-h-72 overflow-y-auto">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-card text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="pb-2 pr-2 font-medium">Question (👎 answer)</th>
-                <th className="pb-2 pr-2 font-medium">Topic</th>
-                <th className="pb-2 font-medium">When</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {data.negatives.map((n, i) => (
-                <tr key={i}>
-                  <td className="max-w-0 truncate py-1.5 pr-2" title={n.question}>
-                    {n.question}
-                    {n.comment && (
-                      <span className="ml-1 text-xs text-muted-foreground" title={n.comment}>
+        <DataTable
+          rows={data.negatives}
+          rowKey={(n, i) => `${n.ts}-${i}`}
+          maxHeightClassName="max-h-72"
+          searchPlaceholder="Search questions…"
+          columns={[
+            {
+              key: "question",
+              label: "Question (👎 answer)",
+              className: "max-w-0 truncate",
+              title: (n) => n.question,
+              searchValue: (n) => `${n.question} ${n.comment ?? ""}`,
+              sortValue: (n) => n.question,
+              render: (n) => (
+                <>
+                  {n.question}
+                  {n.comment && (
+                    <>
+                      <span
+                        className="ml-1 text-xs text-muted-foreground print:hidden"
+                        title={n.comment}
+                      >
                         💬
                       </span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap py-1.5 pr-2 text-xs text-muted-foreground">
-                    {n.topic ?? "–"}
-                  </td>
-                  <td className="whitespace-nowrap py-1.5 text-xs text-muted-foreground">
-                    {new Date(n.ts).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      {/* hover tooltip doesn't exist on paper — print the comment itself */}
+                      <span className="ml-1 hidden text-xs italic text-muted-foreground print:inline">
+                        — &ldquo;{n.comment}&rdquo;
+                      </span>
+                    </>
+                  )}
+                </>
+              ),
+            },
+            {
+              key: "topic",
+              label: "Topic",
+              className: "whitespace-nowrap text-xs text-muted-foreground",
+              sortValue: (n) => n.topic,
+              searchValue: (n) => n.topic,
+              render: (n) => n.topic ?? "–",
+            },
+            {
+              key: "when",
+              label: "When",
+              className: "whitespace-nowrap text-xs text-muted-foreground",
+              sortValue: (n) => n.ts,
+              defaultDir: "desc",
+              render: (n) => new Date(n.ts).toLocaleString(),
+            },
+          ]}
+        />
       )}
     </SectionCard>
   );

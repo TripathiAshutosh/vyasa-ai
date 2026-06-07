@@ -77,6 +77,59 @@
 }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }
 
+/* Chart value labels: hidden on screen (tooltips cover this), shown in print
+   where hover doesn't exist. Overridden inside @media print below. */
+.chart-print-label { display: none; }
+
+/* Print styles — used by the analytics "Download PDF" button (browser print-to-PDF) */
+@media print {
+  @page { margin: 12mm; }
+
+  /* The app shell is height-locked with inner scroll areas; printing needs
+     everything to flow as one tall document. */
+  html, body { height: auto !important; overflow: visible !important; }
+  .h-screen, .h-full { height: auto !important; }
+  .overflow-hidden, .overflow-y-auto, .overflow-x-auto { overflow: visible !important; }
+  .max-h-56, .max-h-64, .max-h-72 { max-height: none !important; }
+
+  /* Keep backgrounds (heatmap cells, chart fills, status badges) in the PDF. */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* Un-truncate table cells: text that is ellipsized on screen (full value
+     only on hover) wraps onto multiple lines in the PDF instead. */
+  td.truncate {
+    max-width: none !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  /* Charts must never overflow the page width. */
+  .recharts-responsive-container, .recharts-wrapper { max-width: 100% !important; }
+  .recharts-wrapper svg { max-width: 100% !important; }
+
+  .chart-print-label { display: revert; }
+
+  /* Always print on a light palette, even when the app is in dark mode. */
+  .dark {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+  }
+}
+
 /* Prose tweaks for markdown answers */
 .markdown { @apply text-[15px] leading-relaxed; }
 .markdown p { @apply my-2; }

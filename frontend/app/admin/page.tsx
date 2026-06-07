@@ -10,7 +10,9 @@ export const metadata: Metadata = {
 export default function AdminPage() {
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-muted/20">
-      <TopBar rightLabel="Admin" />
+      <div className="print:hidden">
+        <TopBar rightLabel="Admin" />
+      </div>
       <main className="flex-1 min-h-0">
         <AdminTabs />
       </main>

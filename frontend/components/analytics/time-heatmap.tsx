@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import type { AnalyticsTimeseries } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { SectionCard } from "./section";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -38,13 +39,27 @@ export function TimeHeatmap({ data }: { data: AnalyticsTimeseries }) {
                 </div>
                 {Array.from({ length: 24 }, (_, h) => {
                   const n = counts.get(`${dow}-${h}`) ?? 0;
+                  // Alpha on the background (not `opacity`) so the print-only
+                  // count below stays fully readable.
+                  const alpha = n === 0 ? 0.06 : 0.15 + 0.85 * (n / max);
                   return (
                     <div
                       key={`${dow}-${h}`}
                       title={`${label} ${h}:00 — ${n} queries`}
-                      className="h-4 rounded-[3px] bg-primary"
-                      style={{ opacity: n === 0 ? 0.06 : 0.15 + 0.85 * (n / max) }}
-                    />
+                      className="relative h-4 rounded-[3px]"
+                      style={{ backgroundColor: `hsl(var(--primary) / ${alpha})` }}
+                    >
+                      {n > 0 && (
+                        <span
+                          className={cn(
+                            "absolute inset-0 hidden items-center justify-center text-[7px] leading-none print:flex",
+                            alpha > 0.55 ? "text-primary-foreground" : "text-foreground"
+                          )}
+                        >
+                          {n}
+                        </span>
+                      )}
+                    </div>
                   );
                 })}
               </React.Fragment>

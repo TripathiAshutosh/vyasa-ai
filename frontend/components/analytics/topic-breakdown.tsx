@@ -4,12 +4,14 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import type { AnalyticsTopics } from "@/lib/api";
+import { DataTable } from "./data-table";
 import { CHART_COLORS, SectionCard, pct } from "./section";
 
 export function TopicBreakdown({ data }: { data: AnalyticsTopics }) {
@@ -35,7 +37,16 @@ export function TopicBreakdown({ data }: { data: AnalyticsTopics }) {
                   width={88}
                 />
                 <Tooltip />
-                <Bar dataKey="queries" fill={CHART_COLORS.primary} radius={[0, 4, 4, 0]} />
+                <Bar dataKey="queries" fill={CHART_COLORS.primary} radius={[0, 4, 4, 0]}>
+                  {/* hover tooltips don't exist on paper — print value labels instead */}
+                  <LabelList
+                    dataKey="queries"
+                    position="right"
+                    className="chart-print-label"
+                    fill={CHART_COLORS.muted}
+                    fontSize={10}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -49,41 +60,54 @@ export function TopicBreakdown({ data }: { data: AnalyticsTopics }) {
         {data.intents.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">No data yet.</p>
         ) : (
-          <div className="max-h-64 overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-card text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="pb-2 pr-2 font-medium">Question</th>
-                  <th className="pb-2 pr-2 font-medium">Topic</th>
-                  <th className="pb-2 text-right font-medium">Asked</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {data.intents.map((it) => (
-                  <tr key={it.id}>
-                    <td
-                      className="max-w-0 truncate py-1.5 pr-2"
-                      title={it.canonical_question ?? it.example_question}
-                    >
-                      {it.canonical_question ?? it.example_question}
-                      {it.refusal_rate > 0.5 && (
-                        <span
-                          className="ml-1 text-destructive"
-                          title={`refused ${pct(it.refusal_rate)} of the time`}
-                        >
-                          ⚠
-                        </span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap py-1.5 pr-2 text-xs text-muted-foreground">
-                      {it.topic ?? "…"}
-                    </td>
-                    <td className="py-1.5 text-right tabular-nums">{it.queries}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            rows={data.intents}
+            rowKey={(it) => it.id}
+            maxHeightClassName="max-h-64"
+            searchPlaceholder="Search questions…"
+            initialSort={{ key: "queries", dir: "desc" }}
+            columns={[
+              {
+                key: "question",
+                label: "Question",
+                className: "max-w-0 truncate",
+                title: (it) => it.canonical_question ?? it.example_question,
+                searchValue: (it) =>
+                  `${it.canonical_question ?? ""} ${it.example_question}`,
+                sortValue: (it) => it.canonical_question ?? it.example_question,
+                render: (it) => (
+                  <>
+                    {it.canonical_question ?? it.example_question}
+                    {it.refusal_rate > 0.5 && (
+                      <span
+                        className="ml-1 text-destructive"
+                        title={`refused ${pct(it.refusal_rate)} of the time`}
+                      >
+                        ⚠
+                      </span>
+                    )}
+                  </>
+                ),
+              },
+              {
+                key: "topic",
+                label: "Topic",
+                className: "whitespace-nowrap text-xs text-muted-foreground",
+                sortValue: (it) => it.topic,
+                searchValue: (it) => it.topic,
+                render: (it) => it.topic ?? "…",
+              },
+              {
+                key: "queries",
+                label: "Asked",
+                align: "right",
+                className: "tabular-nums",
+                sortValue: (it) => it.queries,
+                defaultDir: "desc",
+                render: (it) => it.queries,
+              },
+            ]}
+          />
         )}
       </SectionCard>
     </div>

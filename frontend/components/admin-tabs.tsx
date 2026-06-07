@@ -8,7 +8,7 @@ import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard";
 export function AdminTabs() {
   return (
     <Tabs defaultValue="documents" className="flex h-full flex-col">
-      <div className="flex justify-center border-b bg-background px-6 py-2">
+      <div className="flex justify-center border-b bg-background px-6 py-2 print:hidden">
         <TabsList>
           <TabsTrigger value="documents">
             <FileText className="h-3.5 w-3.5" />

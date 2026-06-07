@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { KeyRound, Loader2, RefreshCw } from "lucide-react";
+import { FileDown, KeyRound, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AdminTokenDialog,
@@ -31,6 +31,21 @@ export function AnalyticsDashboard() {
   const [bundle, setBundle] = React.useState<AnalyticsBundle | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [tokenDialog, setTokenDialog] = React.useState(false);
+  // While true the layout is narrowed to printable width so recharts
+  // re-measures before the print dialog snapshots the page.
+  const [printPrep, setPrintPrep] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!printPrep) return;
+    const t = setTimeout(() => window.print(), 400);
+    return () => clearTimeout(t);
+  }, [printPrep]);
+
+  React.useEffect(() => {
+    const done = () => setPrintPrep(false);
+    window.addEventListener("afterprint", done);
+    return () => window.removeEventListener("afterprint", done);
+  }, []);
 
   const load = React.useCallback(async (rangeDays: number) => {
     const token = getStoredToken();
@@ -65,8 +80,26 @@ export function AnalyticsDashboard() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-6xl space-y-4 px-6 py-8 sm:py-10">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+      <div
+        className={cn(
+          "mx-auto max-w-6xl space-y-4 px-6 py-8 sm:py-10",
+          printPrep && "max-w-[720px]"
+        )}
+      >
+        {/* Print-only report header — makes the PDF self-describing. */}
+        <div className="hidden border-b pb-3 print:block">
+          <h1 className="text-xl font-semibold tracking-tight">
+            Vyasa AI Assistant — Analytics Report
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Last {days} days (
+            {new Date(Date.now() - days * 86400_000).toLocaleDateString()} –{" "}
+            {new Date().toLocaleDateString()}) · Generated{" "}
+            {new Date().toLocaleString()}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-end justify-between gap-4 print:hidden">
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -102,6 +135,19 @@ export function AnalyticsDashboard() {
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
               Refresh
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPrintPrep(true)}
+              disabled={!bundle || loading || printPrep}
+            >
+              {printPrep ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <FileDown className="h-3.5 w-3.5" />
+              )}
+              Download PDF
             </Button>
           </div>
         </div>

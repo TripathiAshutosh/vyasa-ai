@@ -4,12 +4,14 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import type { AnalyticsRag } from "@/lib/api";
+import { DataTable } from "./data-table";
 import { CHART_COLORS, SectionCard } from "./section";
 
 export function RagQuality({ data }: { data: AnalyticsRag }) {
@@ -30,7 +32,16 @@ export function RagQuality({ data }: { data: AnalyticsRag }) {
                 <XAxis dataKey="range" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="queries" fill={CHART_COLORS.primary} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="queries" fill={CHART_COLORS.primary} radius={[4, 4, 0, 0]}>
+                  {/* hover tooltips don't exist on paper — print value labels instead */}
+                  <LabelList
+                    dataKey="queries"
+                    position="top"
+                    className="chart-print-label"
+                    fill={CHART_COLORS.muted}
+                    fontSize={10}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -41,28 +52,40 @@ export function RagQuality({ data }: { data: AnalyticsRag }) {
         {data.most_cited_pages.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">No data yet.</p>
         ) : (
-          <div className="max-h-56 overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-card text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="pb-2 pr-2 font-medium">Document</th>
-                  <th className="pb-2 pr-2 font-medium">Page</th>
-                  <th className="pb-2 text-right font-medium">Citations</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {data.most_cited_pages.map((r, i) => (
-                  <tr key={i}>
-                    <td className="max-w-0 truncate py-1.5 pr-2" title={r.source}>
-                      {r.source}
-                    </td>
-                    <td className="py-1.5 pr-2 tabular-nums">{r.page}</td>
-                    <td className="py-1.5 text-right tabular-nums">{r.citations}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            rows={data.most_cited_pages}
+            rowKey={(r) => `${r.source}-${r.page}`}
+            maxHeightClassName="max-h-56"
+            searchPlaceholder="Search documents…"
+            initialSort={{ key: "citations", dir: "desc" }}
+            columns={[
+              {
+                key: "source",
+                label: "Document",
+                className: "max-w-0 truncate",
+                title: (r) => r.source,
+                searchValue: (r) => r.source,
+                sortValue: (r) => r.source,
+                render: (r) => r.source,
+              },
+              {
+                key: "page",
+                label: "Page",
+                className: "tabular-nums",
+                sortValue: (r) => r.page,
+                render: (r) => r.page,
+              },
+              {
+                key: "citations",
+                label: "Citations",
+                align: "right",
+                className: "tabular-nums",
+                sortValue: (r) => r.citations,
+                defaultDir: "desc",
+                render: (r) => r.citations,
+              },
+            ]}
+          />
         )}
       </SectionCard>
     </div>

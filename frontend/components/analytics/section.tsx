@@ -15,7 +15,12 @@ export function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("rounded-xl border bg-card shadow-sm overflow-hidden", className)}>
+    <div
+      className={cn(
+        "rounded-xl border bg-card shadow-sm overflow-hidden break-inside-avoid",
+        className
+      )}
+    >
       <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2.5">
         <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           {title}
@@ -37,7 +42,7 @@ export function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="rounded-xl border bg-card px-4 py-3 shadow-sm">
+    <div className="rounded-xl border bg-card px-4 py-3 shadow-sm break-inside-avoid">
       <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
